@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: vaylentor-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: BACKEND_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: AMADEUS_CLIENT_ID
+        sync: false
+      - key: AMADEUS_CLIENT_SECRET
+        sync: false
+      - key: AMADEUS_ENV
+        value: test
+      - key: USE_AMADEUS
+        value: "true"
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DB_PATH
+        value: ./data.db
+
+# NOTE: Render's free plan has an EPHEMERAL filesystem — the SQLite file
+# (and every signup/booking in it) is wiped on every redeploy or restart.
+# For anything beyond testing, either:
+#   1) Add a Render persistent disk (paid, Starter plan and up) and point
+#      DB_PATH at a file inside it, or
+#   2) Swap src/db.js for a hosted Postgres database (Render offers a free
+#      Postgres instance for 90 days, or use Railway/Supabase/Neon).
+# The rest of the app doesn't need to change — only src/db.js's storage layer.
