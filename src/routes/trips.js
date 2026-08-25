@@ -5,6 +5,7 @@ const { requireAuth } = require('../auth');
 const { buildPackages } = require('../mockData');
 const { buildPackagesFromAmadeus } = require('../providers/amadeusTrips');
 const { isConfigured: amadeusConfigured } = require('../amadeus');
+const { buildPackagesFromFlightsSky, isConfigured: flightsSkyConfigured } = require('../providers/flightsSkyTrips');
 const { isConfigured: aiConfigured, parseUserRequest, mergeExtractedIntoPreferences, buildEnrichedText } = require('../aiParser');
 const { calculateRevenue } = require('../revenueEngine');
 const { isConfigured: googleRoutesConfigured, computeRoute } = require('../googleRoutes');
@@ -46,6 +47,7 @@ router.post('/api/trips/plan', async (req, res) => {
 
   let trip = null;
   let usedAmadeus = false;
+  let usedFlightsSky = false;
 
   if (amadeusConfigured() && process.env.USE_AMADEUS !== 'false') {
     try {
@@ -54,8 +56,17 @@ router.post('/api/trips/plan', async (req, res) => {
     } catch (err) {
       // Real API reachable-but-empty, misconfigured, sandbox route not in
       // the test data set, rate limited, etc. — never break the page for
-      // this; just fall through to the curated mock data below.
-      console.warn('[trips/plan] Amadeus lookup failed, falling back to mock data:', err.message);
+      // this; just fall through to the next option below.
+      console.warn('[trips/plan] Amadeus lookup failed, falling back:', err.message);
+    }
+  }
+
+  if (!trip && flightsSkyConfigured()) {
+    try {
+      trip = await buildPackagesFromFlightsSky(effectiveMessage, effectivePreferences);
+      usedFlightsSky = true;
+    } catch (err) {
+      console.warn('[trips/plan] Flights-Sky lookup failed, falling back to mock data:', err.message);
     }
   }
 
@@ -64,7 +75,7 @@ router.post('/api/trips/plan', async (req, res) => {
   }
 
   trips.set(trip.id, trip);
-  res.json({ ok: true, data: trip, meta: { source: usedAmadeus ? 'amadeus' : 'mock', aiUnderstood } });
+  res.json({ ok: true, data: trip, meta: { source: usedAmadeus ? 'amadeus' : (usedFlightsSky ? 'flights-sky' : 'mock'), aiUnderstood } });
 });
 
 router.get('/api/trips/:tripId', (req, res) => {
