@@ -1,3 +1,4 @@
+}
 {
   "name": "vaylentor-backend",
   "version": "1.0.0",
@@ -12,7 +13,7 @@
     "test:ai": "node scripts/test-ai-parser.js"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "20.x"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
