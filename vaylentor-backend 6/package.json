@@ -9,10 +9,11 @@
     "dev": "node server.js",
     "test:amadeus": "node scripts/test-amadeus.js",
     "test:places": "node scripts/test-places.js",
-    "test:ai": "node scripts/test-ai-parser.js"
+    "test:ai": "node scripts/test-ai-parser.js",
+    "test:flights-sky": "node scripts/test-flights-sky.js"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "20.x"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
