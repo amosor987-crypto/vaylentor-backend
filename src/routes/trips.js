@@ -5,7 +5,7 @@ const { requireAuth } = require('../auth');
 const { buildPackages } = require('../mockData');
 const { buildPackagesFromAmadeus } = require('../providers/amadeusTrips');
 const { isConfigured: amadeusConfigured } = require('../amadeus');
-const { buildPackagesFromFlightsSky, isConfigured: flightsSkyConfigured } = require('../providers/flightsSkyTrips');
+
 const { isConfigured: aiConfigured, parseUserRequest, mergeExtractedIntoPreferences, buildEnrichedText } = require('../aiParser');
 const { calculateRevenue } = require('../revenueEngine');
 const { isConfigured: googleRoutesConfigured, computeRoute } = require('../googleRoutes');
