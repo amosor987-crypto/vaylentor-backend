@@ -3,7 +3,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { requireAuth } = require('../auth');
-const { buildPackages } = require('../mockData');
+const { buildPackages, buildOptionsForDest, genericItinerary, detectDestinationOrNull } = require('../mockData');
 const { buildPackagesFromAmadeus } = require('../providers/amadeusTrips');
 const { isConfigured: amadeusConfigured } = require('../amadeus');
 // Loaded defensively — if this file isn't present in the deployed repo yet,
@@ -18,7 +18,7 @@ try {
   console.warn('[trips.js] flightsSkyTrips provider not found, skipping:', err.message);
 }
 const { isConfigured: aiConfigured, parseUserRequest, mergeExtractedIntoPreferences, buildEnrichedText } = require('../aiParser');
-const { isConfigured: googlePlacesConfigured, findPlacePhoto } = require('../googlePlaces');
+const { isConfigured: googlePlacesConfigured, findPlacePhoto, searchPlace } = require('../googlePlaces');
 const { calculateRevenue } = require('../revenueEngine');
 const { isConfigured: googleRoutesConfigured, computeRoute } = require('../googleRoutes');
 
@@ -110,6 +110,43 @@ async function buildExtendedItinerary(baseItinerary, totalNights, nearbyCities) 
   return result;
 }
 
+// The fallback for genuinely any destination in the world: when the free
+// text didn't match anything in DEST_LIB or the generic-city keyword list,
+// this resolves it via a real Google Places search instead of failing.
+// Builds a dest object in the same shape as a DEST_LIB entry so it can go
+// straight into buildOptionsForDest. Returns null (never throws) if
+// Places isn't configured or the search comes back empty — the caller
+// falls through to the old keyword-only behavior in that case.
+const LONG_HAUL_HINTS = ['United States', 'Japan', 'Thailand', 'Australia', 'China', 'Korea', 'Vietnam', 'Brazil', 'Argentina', 'Canada', 'Mexico', 'Singapore', 'Indonesia', 'Philippines', 'New Zealand', 'India'];
+async function resolveDestinationViaPlaces(rawText) {
+  if (!googlePlacesConfigured()) return null;
+  try {
+    const place = await searchPlace(rawText);
+    if (!place || !place.displayName) return null;
+    const cityName = place.displayName.text;
+    const address = place.formattedAddress || '';
+    const label = address ? `${cityName}, ${address.split(',').pop().trim()}` : cityName;
+    const isFar = LONG_HAUL_HINTS.some((hint) => address.includes(hint));
+    const legOut = isFar ? { dep: '23:30', arr: '14:45+1', dur: '9ש\' 15ד\' (עצירה)' } : { dep: '10:00', arr: '13:45', dur: '3ש\' 45ד\' ישיר' };
+    const legRet = isFar ? { dep: '16:20', arr: '23:35', dur: '9ש\' 15ד\' (עצירה)' } : { dep: '19:00', arr: '22:45', dur: '3ש\' 45ד\' ישיר' };
+    return {
+      label, code: 'TBD',
+      hotel: [`מלון ${cityName} גרנד`, `סוויטות בוטיק ${cityName}`, `נופש ${cityName} פרימיום`],
+      airlines: [
+        { name: 'אל על', priceDelta: 0, out: { num: 'LY 000', ...legOut }, ret: { num: 'LY 001', ...legRet } },
+        { name: 'ישראייר', priceDelta: -160, out: { num: '6H 000', ...legOut }, ret: { num: '6H 001', ...legRet } },
+        { name: 'Global Connect Air', priceDelta: 180, out: { num: 'GC 000', ...legOut }, ret: { num: 'GC 001', ...legRet } },
+      ],
+      base: isFar ? 5400 : 3600, terminal: 'נתב"ג · טרמינל 3',
+      itinerary: genericItinerary(cityName),
+      generic: true,
+    };
+  } catch (err) {
+    console.warn('[trips/plan] destination resolution via Places failed for', rawText, ':', err.message);
+    return null;
+  }
+}
+
 router.post('/api/trips/plan', async (req, res) => {
   const { message, preferences } = req.body || {};
   if (!message || !message.trim()) {
@@ -156,6 +193,21 @@ router.post('/api/trips/plan', async (req, res) => {
       usedFlightsSky = true;
     } catch (err) {
       console.warn('[trips/plan] Flights-Sky lookup failed, falling back to mock data:', err.message);
+    }
+  }
+
+  if (!trip) {
+    // Real free-text destination coverage: if nothing in DEST_LIB or the
+    // generic-city keyword list matched, this is the fallback that makes
+    // "any country/city in the world" actually true — a live Google
+    // Places search resolves whatever the person typed into a real place,
+    // instead of failing whenever it isn't one of our ~25 hardcoded names.
+    const knownDestKey = detectDestinationOrNull(effectiveMessage);
+    if (!knownDestKey && googlePlacesConfigured()) {
+      const resolvedDest = await resolveDestinationViaPlaces(effectiveMessage);
+      if (resolvedDest) {
+        trip = buildOptionsForDest(resolvedDest, 'places:' + resolvedDest.label, effectiveMessage, effectivePreferences);
+      }
     }
   }
 
