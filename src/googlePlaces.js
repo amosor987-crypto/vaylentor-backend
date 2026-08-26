@@ -33,7 +33,7 @@ async function searchPlace(query) {
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.photos',
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.photos,places.location,places.types,places.addressComponents',
     },
     body: JSON.stringify({ textQuery: query, maxResultCount: 1 }),
   });
@@ -79,6 +79,7 @@ async function findPlacePhoto(name, locationHint) {
     attribution,
     placeName: place.displayName?.text || name,
     address: place.formattedAddress || null,
+    location: place.location ? { lat: place.location.latitude, lng: place.location.longitude } : null,
   };
 }
 
