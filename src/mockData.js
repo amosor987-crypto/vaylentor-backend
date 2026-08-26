@@ -145,15 +145,33 @@ function buildPersonalNotes(prefs) {
   return notes;
 }
 
+// Same generic day-by-day template already used on the frontend for its
+// own generic-city fallback, mirrored here so a destination resolved
+// dynamically via Google Places on the backend gets a real 5-day starting
+// itinerary too, not an empty one.
+function genericItinerary(city) {
+  return {
+    1: [['✈️', '10:00', `טיסה מישראל ל${city}`, ''], ['🚐', '14:00', 'העברה למלון', ''], ['🏨', '15:00', 'צ׳ק אין במלון', ''], ['🚶', '17:00', `סיור היכרות ראשוני ב${city}`, `טיול רגלי קליל להתמצאות במרכז ${city}.`], ['🍽️', '20:00', 'ארוחת ערב במסעדה מקומית מומלצת', `נבחרה עבורכם מסעדה טובה במרכז ${city}.`]],
+    2: [['🍳', '09:00', 'ארוחת בוקר במלון', ''], ['🏛️', '10:30', `סיור באתרים המרכזיים של ${city}`, `האתרים וההיסטוריה שהופכים את ${city} ליעד מבוקש.`], ['🍽️', '13:30', 'ארוחת צהריים', ''], ['🛍️', '16:00', 'זמן חופשי לשופינג ובילויים', ''], ['🍽️', '20:00', 'ארוחת ערב במסעדה מומלצת', '']],
+    3: [['🍳', '09:00', 'ארוחת בוקר במלון', ''], ['🎢', '10:30', 'יום חופשי או טיול יום מאורגן', `אפשרות ליציאה לאזורים סמוכים ל${city} או יום פנוי.`], ['🍽️', '13:30', 'ארוחת צהריים', ''], ['🌅', '18:30', 'שקיעה מנקודת תצפית מומלצת', ''], ['🍽️', '20:30', 'ארוחת ערב', '']],
+    4: [['🧺', '09:30', 'ארוחת בוקר מאוחרת', ''], ['🎨', '11:00', 'זמן חופשי לתחומי עניין אישיים', ''], ['🍽️', '14:00', 'ארוחת צהריים', ''], ['🌇', '18:30', `שקיעה ב${city}`, ''], ['🍽️', '20:30', 'ארוחת ערב פרידה', '']],
+    5: [['🧳', '10:00', 'צ׳ק אאוט מהמלון', ''], ['🚐', '11:30', 'העברה לשדה התעופה', ''], ['✈️', '16:20', 'טיסת חזרה לישראל', '']],
+  };
+}
+
 const TIER_DEFS = [
   { tier: 'value', label: '💰 חסכוני', mult: 0.86, cabin: 'אקונומי', baggage: 'מזוודה 1×20 ק"ג' },
   { tier: 'recommended', label: '⭐ מומלץ', mult: 1.0, cabin: 'אקונומי פלוס', baggage: 'מזוודה 1×23 ק"ג + טרולי' },
   { tier: 'premium', label: '👑 פרימיום', mult: 1.42, cabin: 'ביזנס', baggage: '2 מזוודות 23 ק"ג + עדיפות בעליה' },
 ];
 
-function buildPackages(userText, preferences) {
-  const destKey = detectDestination(userText);
-  const dest = DEST_LIB[destKey];
+// Extracted out of buildPackages() so a destination resolved dynamically
+// at request time (e.g. via Google Places, when nothing in DEST_LIB
+// matched the free text) can go through the exact same tier/pricing math
+// as a curated one, instead of duplicating it. `dest` must have the same
+// shape as a DEST_LIB entry (label, code, hotel[], airlines[], base,
+// terminal, itinerary).
+function buildOptionsForDest(dest, destKey, userText, preferences) {
   const budget = detectBudget(userText);
   const travelers = (preferences && preferences.travelers) || detectTravelers(userText);
   const nights = detectNights(userText);
@@ -183,7 +201,10 @@ function buildPackages(userText, preferences) {
       total, marketTotal, flight_price: flight, hotel_price: hotel, transfer_price: transfer, activities_price: activities,
       baseFlightPrice: flight,
       itinerary: dest.itinerary,
-      personalNotes,
+      personalNotes: dest.generic ? [
+        'יעד שנמצא באמצעות Google Places — פרטי המלון והטיסות כאן הם הערכה כללית, לא נתונים חיים עדיין.',
+        ...personalNotes,
+      ] : personalNotes,
       reasoning:
         idx === 0 ? 'האופציה החסכונית ביותר שעומדת בתקציב, בלי לוותר על מיקום מרכזי.'
         : idx === 1 ? 'האיזון הכי טוב בין מחיר, מיקום המלון ונוחות הטיסה — הבחירה הפופולרית.'
@@ -195,4 +216,10 @@ function buildPackages(userText, preferences) {
   return { id: uuidv4(), userText, budget, travelers, nights, destination: dest.label, options };
 }
 
-module.exports = { buildPackages, DEST_LIB, detectDestination, detectDestinationOrNull };
+function buildPackages(userText, preferences) {
+  const destKey = detectDestination(userText);
+  const dest = DEST_LIB[destKey];
+  return buildOptionsForDest(dest, destKey, userText, preferences);
+}
+
+module.exports = { buildPackages, buildOptionsForDest, genericItinerary, DEST_LIB, detectDestination, detectDestinationOrNull };
