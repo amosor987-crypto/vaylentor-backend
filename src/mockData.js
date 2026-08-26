@@ -1,3 +1,4 @@
+
 const { v4: uuidv4 } = require('uuid');
 
 /* ======================================================================
@@ -15,6 +16,7 @@ const DEST_LIB = {
   greece: {
     label: 'סנטוריני, יוון', code: 'JTR',
     hotel: ['Aegean Blue Suites', 'Caldera View Villas', 'Oia Cliffside Hotel'],
+    nearbyCities: ['אתונה, יוון', 'מיקונוס, יוון', 'הרקליון כרתים, יוון'],
     airlines: [
       { name: 'אל על', priceDelta: 0, out: { num: 'LY 954', dep: '11:20', arr: '15:05', dur: '3ש\' 45ד\' ישיר' }, ret: { num: 'LY 955', dep: '16:40', arr: '19:55', dur: '3ש\' 15ד\' ישיר' } },
       { name: 'ארקיע', priceDelta: -200, out: { num: 'IZ 1954', dep: '06:30', arr: '10:15', dur: '3ש\' 45ד\' ישיר' }, ret: { num: 'IZ 1955', dep: '21:00', arr: '00:10', dur: '3ש\' 10ד\' ישיר' } },
@@ -32,6 +34,7 @@ const DEST_LIB = {
   thailand: {
     label: 'פוקט, תאילנד', code: 'HKT',
     hotel: ['Andaman Palm Resort', 'Patong Bay Villas', 'Lotus Garden Hotel'],
+    nearbyCities: ['בנגקוק, תאילנד', 'קראבי, תאילנד', 'צ׳יאנג מאי, תאילנד'],
     airlines: [
       { name: 'אל על', priceDelta: 0, out: { num: 'LY 083', dep: '02:40', arr: '15:55', dur: '9ש\' 15ד\' ישיר' }, ret: { num: 'LY 084', dep: '17:20', arr: '23:50', dur: '9ש\' 30ד\' ישיר' } },
       { name: 'Orient Pacific Air', priceDelta: 170, out: { num: 'OP 771', dep: '23:50', arr: '13:20+1', dur: '10ש\' 30ד\' ישיר' }, ret: { num: 'OP 772', dep: '15:00', arr: '21:10', dur: '10ש\' 10ד\' ישיר' } },
@@ -49,6 +52,7 @@ const DEST_LIB = {
   italy: {
     label: 'רומא, איטליה', code: 'FCO',
     hotel: ['Via Roma Boutique Hotel', 'Trastevere Suites', 'Colosseo Palace'],
+    nearbyCities: ['פירנצה, איטליה', 'ונציה, איטליה', 'נאפולי, איטליה'],
     airlines: [
       { name: 'אל על', priceDelta: 0, out: { num: 'LY 386', dep: '07:15', arr: '10:05', dur: '3ש\' 50ד\' ישיר' }, ret: { num: 'LY 387', dep: '20:30', arr: '00:55', dur: '3ש\' 25ד\' ישיר' } },
       { name: 'ישראייר', priceDelta: -220, out: { num: '6H 632', dep: '05:45', arr: '08:35', dur: '3ש\' 50ד\' ישיר' }, ret: { num: '6H 633', dep: '22:15', arr: '02:35+1', dur: '3ש\' 20ד\' ישיר' } },
@@ -66,6 +70,7 @@ const DEST_LIB = {
   portugal: {
     label: 'ליסבון, פורטוגל', code: 'LIS',
     hotel: ['Alfama Ocean Hotel', 'Belém Riverside Suites', 'Bairro Alto Boutique'],
+    nearbyCities: ['פורטו, פורטוגל', 'סינטרה, פורטוגל', 'פארו, פורטוגל'],
     airlines: [
       { name: 'אל על', priceDelta: 0, out: { num: 'LY 393', dep: '06:30', arr: '11:15', dur: '6ש\' 45ד\' ישיר' }, ret: { num: 'LY 394', dep: '12:45', arr: '20:20', dur: '6ש\' 35ד\' ישיר' } },
       { name: 'ארקיע', priceDelta: -190, out: { num: 'IZ 1393', dep: '03:20', arr: '09:55', dur: '6ש\' 35ד\' (עצירה)' }, ret: { num: 'IZ 1394', dep: '11:40', arr: '21:50', dur: '7ש\' 10ד\' (עצירה)' } },
@@ -83,6 +88,7 @@ const DEST_LIB = {
   paris: {
     label: 'פריז, צרפת', code: 'CDG',
     hotel: ['Le Marais Charme Hotel', 'Rive Gauche Suites', 'Montmartre View Hotel'],
+    nearbyCities: ['ליון, צרפת', 'ניס, צרפת', 'בורדו, צרפת'],
     airlines: [
       { name: 'אל על', priceDelta: 0, out: { num: 'LY 321', dep: '09:15', arr: '13:00', dur: '4ש\' 45ד\' ישיר' }, ret: { num: 'LY 322', dep: '21:10', arr: '01:35', dur: '4ש\' 25ד\' ישיר' } },
       { name: 'ישראייר', priceDelta: -210, out: { num: '6H 220', dep: '05:30', arr: '09:10', dur: '4ש\' 40ד\' ישיר' }, ret: { num: '6H 221', dep: '23:00', arr: '03:20+1', dur: '4ש\' 20ד\' ישיר' } },
