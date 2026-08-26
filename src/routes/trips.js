@@ -1,4 +1,3 @@
-
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
@@ -123,10 +122,23 @@ async function resolveDestinationViaPlaces(rawText) {
   try {
     const place = await searchPlace(rawText);
     if (!place || !place.displayName) return null;
-    const cityName = place.displayName.text;
+    // Text Search can match a specific attraction (a theme park, a
+    // landmark) instead of the city itself when the free text is vague —
+    // "IMG Worlds of Adventure" in Dubai is a real example that broke
+    // this. The formatted address isn't reliably comma-separated either
+    // (some addresses use " - " instead), so the actual city is pulled
+    // from the structured addressComponents (type "locality", falling
+    // back to a broader administrative area) rather than string-parsing
+    // the human-readable address.
+    const components = place.addressComponents || [];
+    const findComponent = (type) => components.find((c) => (c.types || []).includes(type));
+    const localityComp = findComponent('locality') || findComponent('administrative_area_level_1') || findComponent('administrative_area_level_2');
+    const countryComp = findComponent('country');
+    const cityName = localityComp ? localityComp.longText : place.displayName.text;
+    const country = countryComp ? countryComp.longText : '';
+    const label = country && country !== cityName ? `${cityName}, ${country}` : cityName;
     const address = place.formattedAddress || '';
-    const label = address ? `${cityName}, ${address.split(',').pop().trim()}` : cityName;
-    const isFar = LONG_HAUL_HINTS.some((hint) => address.includes(hint));
+    const isFar = LONG_HAUL_HINTS.some((hint) => address.includes(hint) || country.includes(hint));
     const legOut = isFar ? { dep: '23:30', arr: '14:45+1', dur: '9ש\' 15ד\' (עצירה)' } : { dep: '10:00', arr: '13:45', dur: '3ש\' 45ד\' ישיר' };
     const legRet = isFar ? { dep: '16:20', arr: '23:35', dur: '9ש\' 15ד\' (עצירה)' } : { dep: '19:00', arr: '22:45', dur: '3ש\' 45ד\' ישיר' };
     return {
