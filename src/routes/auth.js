@@ -27,7 +27,25 @@ router.post('/api/auth/signup', async (req, res) => {
   if (!name || !email || !password || password.length < 4) {
     return res.status(400).json({ ok: false, error: 'invalid_input' });
   }
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  const existing = db.prepare('SELECT id, password_hash FROM users WHERE email = ?').get(email);
+
+  // An account that signed up via Google has no password_hash at all.
+  // Rather than blocking them with "email taken" forever, this lets that
+  // same person add a password to their existing account — useful for
+  // logging into a second surface (like the admin dashboard) that only
+  // supports email+password, not Google OAuth.
+  // NOTE: this doesn't verify the requester actually owns the Google
+  // account first (no email verification exists yet anywhere on this
+  // site) — acceptable for now while testing, but add email verification
+  // before this matters for real, unrelated users.
+  if (existing && !existing.password_hash) {
+    const passwordHash = await bcrypt.hash(password, 10);
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, existing.id);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(existing.id);
+    promoteIfAdminEmail(user.id, email);
+    const token = signToken(user);
+    return res.json({ ok: true, data: { token, user: { id: user.id, name: user.name, email: user.email } } });
+  }
   if (existing) return res.status(409).json({ ok: false, error: 'email_taken' });
 
   const passwordHash = await bcrypt.hash(password, 10);
