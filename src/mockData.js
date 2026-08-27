@@ -1,4 +1,3 @@
-
 const { v4: uuidv4 } = require('uuid');
 
 /* ======================================================================
@@ -160,9 +159,9 @@ function genericItinerary(city) {
 }
 
 const TIER_DEFS = [
-  { tier: 'value', label: '💰 חסכוני', mult: 0.86, cabin: 'אקונומי', baggage: 'מזוודה 1×20 ק"ג' },
-  { tier: 'recommended', label: '⭐ מומלץ', mult: 1.0, cabin: 'אקונומי פלוס', baggage: 'מזוודה 1×23 ק"ג + טרולי' },
-  { tier: 'premium', label: '👑 פרימיום', mult: 1.42, cabin: 'ביזנס', baggage: '2 מזוודות 23 ק"ג + עדיפות בעליה' },
+  { tier: 'value', label: '💰 חסכוני', mult: 0.86, cabin: 'אקונומי', baggage: 'מזוודה 1×20 ק"ג', baggageKey: 'one20' },
+  { tier: 'recommended', label: '⭐ מומלץ', mult: 1.0, cabin: 'אקונומי פלוס', baggage: 'מזוודה 1×23 ק"ג + טרולי', baggageKey: 'one23' },
+  { tier: 'premium', label: '👑 פרימיום', mult: 1.42, cabin: 'ביזנס', baggage: '2 מזוודות 23 ק"ג + עדיפות בעליה', baggageKey: 'two23' },
 ];
 
 // Extracted out of buildPackages() so a destination resolved dynamically
@@ -190,6 +189,15 @@ function buildOptionsForDest(dest, destKey, userText, preferences) {
     return {
       id: uuidv4(),
       tier: t.tier, tierLabel: t.label, cabin: t.cabin, baggage: t.baggage,
+      // Per-traveler baggage selection — the frontend's option detail page
+      // (renderOptionDetail) reads these three fields directly and throws
+      // if they're missing, which is exactly what was happening for every
+      // package that came from this backend (curated or Places-resolved)
+      // before these existed here: the "view full package" button
+      // appeared to do nothing because the render crashed partway through.
+      tierBaggageKey: t.baggageKey,
+      baggageAssignments: Array.from({ length: travelers }, () => t.baggageKey),
+      baggage_price: 0,
       destination: dest.label, code: dest.code, destKey,
       hotel_name: dest.hotel[idx % dest.hotel.length],
       hotel_photo_url: null,
@@ -209,6 +217,15 @@ function buildOptionsForDest(dest, destKey, userText, preferences) {
         idx === 0 ? 'האופציה החסכונית ביותר שעומדת בתקציב, בלי לוותר על מיקום מרכזי.'
         : idx === 1 ? 'האיזון הכי טוב בין מחיר, מיקום המלון ונוחות הטיסה — הבחירה הפופולרית.'
         : 'שדרוג לחדר עם נוף, טיסה נוחה יותר וזמן פנוי מורחב באטרקציות.',
+      // Simple static gradient — the frontend has a full scoring engine
+      // (scoreOption) that weighs price/flight/personalization; this
+      // backend fallback doesn't reproduce that, but matchScore must be a
+      // real number, not undefined, since the option detail page renders
+      // it directly as a percentage.
+      matchScore: idx === 0 ? 82 : idx === 1 ? 90 : 78,
+      scoreReasons: [idx === 0 ? 'האופציה החסכונית ביותר שעומדת בתקציב, בלי לוותר על מיקום מרכזי.'
+        : idx === 1 ? 'האיזון הכי טוב בין מחיר, מיקום המלון ונוחות הטיסה — הבחירה הפופולרית.'
+        : 'שדרוג לחדר עם נוף, טיסה נוחה יותר וזמן פנוי מורחב באטרקציות.'],
       source: 'mock',
     };
   });
