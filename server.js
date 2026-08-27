@@ -9,8 +9,17 @@ const adminRoutes = require('./src/routes/admin');
 
 const app = express();
 
-// Allow the deployed frontend origin (and localhost during development).
-const allowedOrigins = [process.env.FRONTEND_URL, 'http://localhost:5500', 'http://127.0.0.1:5500'].filter(Boolean);
+// Allow the deployed frontend origin(s) (and localhost during development).
+// ADMIN_FRONTEND_URL is a second allowed origin for the separate admin
+// dashboard site — it lives on its own domain by design (isolated from the
+// main customer-facing site), so it needs its own entry here or every
+// request from it fails as an opaque "network error" in the browser.
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.ADMIN_FRONTEND_URL,
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+].filter(Boolean);
 app.use(
   cors({
     origin(origin, callback) {
@@ -51,6 +60,9 @@ app.get('/api/status', (req, res) => {
         configured: amadeusConfigured(),
         env: process.env.AMADEUS_ENV === 'production' ? 'production' : 'test',
         useFlag: process.env.USE_AMADEUS !== 'false',
+      },
+      flightsSky: {
+        configured: Boolean(process.env.RAPIDAPI_KEY),
       },
       googlePlaces: {
         configured: Boolean(process.env.GOOGLE_PLACES_API_KEY),
