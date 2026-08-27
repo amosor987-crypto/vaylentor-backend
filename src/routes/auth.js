@@ -6,6 +6,20 @@ const { signToken, requireAuth, buildGoogleClient } = require('../auth');
 
 const router = express.Router();
 
+// Lets a specific set of emails become admin just by signing up or logging
+// in with that address — set ADMIN_EMAILS in Render as a comma-separated
+// list (e.g. "you@example.com,partner@example.com"). Avoids needing raw
+// SQL/shell access to the database to grant the first admin account.
+function isAdminEmail(email) {
+  const list = (process.env.ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return list.includes((email || '').toLowerCase());
+}
+function promoteIfAdminEmail(userId, email) {
+  if (isAdminEmail(email)) {
+    db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(userId);
+  }
+}
+
 /* ---------------- email + password ---------------- */
 
 router.post('/api/auth/signup', async (req, res) => {
@@ -19,6 +33,7 @@ router.post('/api/auth/signup', async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const user = { id: uuidv4(), name, email, password_hash: passwordHash, created_at: new Date().toISOString() };
   db.prepare('INSERT INTO users (id, name, email, password_hash, created_at) VALUES (@id, @name, @email, @password_hash, @created_at)').run(user);
+  promoteIfAdminEmail(user.id, email);
 
   const token = signToken(user);
   res.json({ ok: true, data: { token, user: { id: user.id, name: user.name, email: user.email } } });
@@ -33,13 +48,14 @@ router.post('/api/auth/login', async (req, res) => {
 
   const match = await bcrypt.compare(password, user.password_hash);
   if (!match) return res.status(401).json({ ok: false, error: 'invalid_credentials' });
+  promoteIfAdminEmail(user.id, user.email);
 
   const token = signToken(user);
   res.json({ ok: true, data: { token, user: { id: user.id, name: user.name, email: user.email } } });
 });
 
 router.get('/api/me', requireAuth, (req, res) => {
-  const user = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT id, name, email, is_admin FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.status(404).json({ ok: false, error: 'not_found' });
   res.json({ ok: true, data: user });
 });
@@ -89,6 +105,7 @@ router.get('/auth/google/callback', async (req, res) => {
     } else if (!user.google_id) {
       db.prepare('UPDATE users SET google_id = ? WHERE id = ?').run(googleId, user.id);
     }
+    promoteIfAdminEmail(user.id, email);
 
     const token = signToken(user);
     res.redirect(`${frontendUrl}?token=${encodeURIComponent(token)}`);
