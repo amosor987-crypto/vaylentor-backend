@@ -6,6 +6,7 @@ const authRoutes = require('./src/routes/auth');
 const tripRoutes = require('./src/routes/trips');
 const bookingRoutes = require('./src/routes/bookings');
 const adminRoutes = require('./src/routes/admin');
+const supportRoutes = require('./src/routes/support');
 
 const app = express();
 
@@ -14,9 +15,19 @@ const app = express();
 // dashboard site — it lives on its own domain by design (isolated from the
 // main customer-facing site), so it needs its own entry here or every
 // request from it fails as an opaque "network error" in the browser.
+//
+// EXTRA_ALLOWED_ORIGINS is a comma-separated list for any additional
+// frontend domains (e.g. while testing a new host like Vercel or Render
+// static sites) — set it once in Render's environment variables instead of
+// needing a fresh code change + redeploy every time a new domain shows up.
+const extraOrigins = (process.env.EXTRA_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.ADMIN_FRONTEND_URL,
+  ...extraOrigins,
   'http://localhost:5500',
   'http://127.0.0.1:5500',
 ].filter(Boolean);
@@ -81,6 +92,7 @@ app.use(authRoutes);
 app.use(tripRoutes);
 app.use(bookingRoutes);
 app.use(adminRoutes);
+app.use(supportRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ ok: false, error: 'not_found' });
